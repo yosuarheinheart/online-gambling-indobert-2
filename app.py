@@ -522,13 +522,16 @@ else:
                         "confidence": confidences
                     })
 
+                    label_mapping = {0: "Netral", 1: "Toxic", 2: "Judol"}
                     counts = df_res["predicted_label"].value_counts().sort_index()
+                    chart_labels = [label_mapping.get(x, x) for x in counts.index]
+
                     st.markdown("### 📊 Distribusi Kelas Komentar")
                     fig, ax = plt.subplots()
-                    ax.pie(counts.values, labels=counts.index, autopct='%1.1f%%', startangle=90)
+
+                    ax.pie(counts.values, labels=chart_labels, autopct='%1.1f%%', startangle=90)
                     ax.axis('equal')
                     st.pyplot(fig)
-
                     st.markdown("### 🔎 Tabel Hasil")
                     st.dataframe(df_res.head(200))
 
