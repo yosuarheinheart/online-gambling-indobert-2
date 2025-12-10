@@ -401,7 +401,7 @@ repo_input = st.sidebar.text_input("Model repo / folder", value=DEFAULT_REPO,
 device_opt = st.sidebar.selectbox("Device", options=["auto", "cpu", "gpu"], index=0,
                                   help="auto -> use GPU if available")
 show_raw = st.sidebar.checkbox("Show raw scores (for debugging)", value=False)
-
+example_btn = st.sidebar.button("Use example text")
 
 # ---------------- Main UI ----------------
 st.title("🧪 IndoBERT — Text Classification")
