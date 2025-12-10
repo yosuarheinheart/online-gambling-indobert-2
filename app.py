@@ -401,10 +401,7 @@ repo_input = st.sidebar.text_input("Model repo / folder", value=DEFAULT_REPO,
 device_opt = st.sidebar.selectbox("Device", options=["auto", "cpu", "gpu"], index=0,
                                   help="auto -> use GPU if available")
 show_raw = st.sidebar.checkbox("Show raw scores (for debugging)", value=False)
-example_btn = st.sidebar.button("Use example text")
-st.sidebar.markdown("---")
-st.sidebar.write("YouTube API key (optional for comments): set Streamlit secret `YOUTUBE_API_KEY` or env var `YOUTUBE_API_KEY`.")
-st.sidebar.caption("If missing, YouTube comment feature won't work.")
+
 
 # ---------------- Main UI ----------------
 st.title("🧪 IndoBERT — Text Classification")
