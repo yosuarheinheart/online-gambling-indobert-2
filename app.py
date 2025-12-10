@@ -337,14 +337,12 @@ def get_top_prediction(scores_list):
     best = max(scores_list, key=lambda x: x["score"])
     return best["label"], float(best["score"])
 
-def normalize_label(lbl: str):
-    clean_lbl = lbl
+def normalize_label(lbl):
     if isinstance(lbl, str):
-        if lbl.startswith("LABEL_"):
-            clean_lbl = lbl.replace("LABEL_", "")
+        lbl = lbl.replace("LABEL_", "")
     
     try:
-        lbl_int = int(clean_lbl)
+        lbl_int = int(lbl)
     except ValueError:
         return str(lbl)
     
@@ -354,7 +352,7 @@ def normalize_label(lbl: str):
         2: "Judol"
     }
     
-    return mapping.get(lbl_int, f"Unknown ({lbl})")
+    return mapping.get(lbl_int, str(lbl_int))
 
 # ---------------- YouTube helpers ----------------
 YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
@@ -464,7 +462,15 @@ if mode == "Text single":
             st.metric(label="Predicted class", value=f"{display_label}", delta=f"{top_score:.4f}")
             st.caption("Probabilitas di metric adalah probabilitas kelas terpilih.")
 
-            df = pd.DataFrame([{ "label": normalize_label(x["label"]), "score": x["score"] } for x in scores])
+            df_data = []
+            for x in scores:
+                df_data.append({
+                    "label": normalize_label(x["label"]), 
+                    "score": x["score"]
+                })
+            
+            df = pd.DataFrame(df_data)
+
             df = df.sort_values("score", ascending=False).reset_index(drop=True)
             st.markdown("#### Probabilitas per Kelas")
             st.bar_chart(df.set_index("label"))
@@ -541,7 +547,7 @@ else:
                     st.markdown("### 📊 Distribusi Kelas Komentar")
                     fig, ax = plt.subplots()
 
-                    ax.pie(counts.values, labels=chart_labels, autopct='%1.1f%%', startangle=90)
+                    ax.pie(counts.values, labels=counts.index, autopct='%1.1f%%', startangle=90)
                     ax.axis('equal')
                     st.pyplot(fig)
                     st.markdown("### 🔎 Tabel Hasil")
