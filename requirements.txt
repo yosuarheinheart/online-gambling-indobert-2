@@ -1,0 +1,13 @@
+streamlit
+transformers
+torch
+safetensors
+pandas
+numpy
+requests
+matplotlib
+yt-dlp
+google-api-python-client
+google-auth-oauthlib
+google-auth
+python-dotenv
