@@ -544,7 +544,4 @@ else:
 
 # Footer / notes
 st.markdown("---")
-st.write("Notes:")
-st.write("- Preprocessing applied: unicode normalization, HTML/url removal, punctuation cleanup, lowercasing, optional stopword removal & stemming (Sastrawi if installed).")
-st.write("- YouTube comments feature membutuhkan YouTube Data API v3 key.")
 st.caption("Developed with ❤️ by Group 4 - Deep Learning - 2025")
