@@ -338,9 +338,23 @@ def get_top_prediction(scores_list):
     return best["label"], float(best["score"])
 
 def normalize_label(lbl: str):
-    if lbl.startswith("LABEL_"):
-        return lbl.replace("LABEL_", "")
-    return lbl
+    clean_lbl = lbl
+    if isinstance(lbl, str):
+        if lbl.startswith("LABEL_"):
+            clean_lbl = lbl.replace("LABEL_", "")
+    
+    try:
+        lbl_int = int(clean_lbl)
+    except ValueError:
+        return str(lbl)
+    
+    mapping = {
+        0: "Netral",
+        1: "Toxic",
+        2: "Judol"
+    }
+    
+    return mapping.get(lbl_int, f"Unknown ({lbl})")
 
 # ---------------- YouTube helpers ----------------
 YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
@@ -522,9 +536,7 @@ else:
                         "confidence": confidences
                     })
 
-                    label_mapping = {0: "Netral", 1: "Toxic", 2: "Judol"}
-                    counts = df_res["predicted_label"].value_counts().sort_index()
-                    chart_labels = [label_mapping.get(x, x) for x in counts.index]
+                    counts = df_res["predicted_label"].value_counts()
 
                     st.markdown("### 📊 Distribusi Kelas Komentar")
                     fig, ax = plt.subplots()
