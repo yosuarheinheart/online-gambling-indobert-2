@@ -5,6 +5,7 @@ import html
 import string
 import time
 import traceback
+import io
 from typing import List, Optional
 
 import streamlit as st
@@ -25,7 +26,7 @@ except Exception:
     _SASTRAWI_AVAILABLE = False
 
 # ---------------- Config ----------------
-DEFAULT_REPO = "yossss90/indobert-imbalance-2"  # ganti sesuai repo HF Anda
+DEFAULT_REPO = "yossss90/indobert-imbalance-2"  # replace with your HF repo
 st.set_page_config(page_title="IndoBERT Classifier", layout="centered", initial_sidebar_state="expanded")
 
 # ---------------- Preprocessing utilities (copied & adapted) ----------------
@@ -53,23 +54,23 @@ FULL_UNICODE_NORMALIZATION_MAP = {
     '𝗮':'a', '𝗯':'b', '𝗰':'c', '𝗱':'d', '𝗲':'e', '𝗳':'f', '𝗴':'g', '𝗵':'h', '𝗶':'i', '𝗷':'j', '𝗸':'k', '𝗹':'l', '𝗺':'m', '𝗻':'n', '𝗼':'o', '𝗽':'p', '𝗾':'q', '𝗿':'r', '𝘀':'s', '𝘁':'t', '𝘂':'u', '𝘃':'v', '𝘄':'w', '𝘅':'x', '𝘆':'y', '𝘇':'z',
     '𝟬':'0', '𝟭':'1', '𝟮':'2', '𝟯':'3', '𝟰':'4', '𝟱':'5', '𝟲':'6', '𝟳':'7', '𝟴':'8', '𝟵':'9',
 
-    # Monospace (untuk 𝙿𝚛𝚘𝚋𝚎𝚝𝟾𝟻𝟻)
-    '𝙰':'A', '𝙱':'B', '𝙲':'C', '𝙳':'D', '𝙴':'E', '𝙵':'F', '𝙶':'G', '𝙷':'H', '𝙸':'I', '𝙹':'J', '𝙺':'K', '𝙻':'L', '𝙼':'M', '𝙽':'N', '𝙾':'O', '𝙿':'P', '𝚀':'Q', '𝚁':'R', '𝚂':'S', '𝚃':'T', '𝚄':'U', '𝚅':'V', '𝚆':'W', '𝚇':'X', '𝚈':'Y', '𝚉':'Z',
+    # Monospace (for 𝙿𝚛𝚘𝚋𝚎𝚝𝟾𝟻𝟻)
+    '𝙰':'A', '𝙱':'B', '𝙲':'C', '𝙳':'D', '𝙴':'E', '𝗙':'F', '𝙶':'G', '𝙷':'H', '𝙸':'I', '𝙹':'J', '𝙺':'K', '𝙻':'L', '𝙼':'M', '𝙽':'N', '𝙾':'O', '𝙿':'P', '𝚀':'Q', '𝚁':'R', '𝚂':'S', '𝚃':'T', '𝚄':'U', '𝚅':'V', '𝚆':'W', '𝚇':'X', '𝚈':'Y', '𝚉':'Z',
     '𝚊':'a', '𝚋':'b', '𝚌':'c', '𝚍':'d', '𝚎':'e', '𝚏':'f', '𝚐':'g', '𝚑':'h', '𝚒':'i', '𝚓':'j', '𝚔':'k', '𝚕':'l', '𝚖':'m', '𝚗':'n', '𝚘':'o', '𝚙':'p', '𝚚':'q', '𝚛':'r', '𝚜':'s', '𝚝':'t', '𝚞':'u', '𝚟':'v', '𝚠':'w', '𝚡':'x', '𝚢':'y', '𝚣':'z',
     '𝟶':'0', '𝟷':'1', '𝟸':'2', '𝟹':'3', '𝟺':'4', '𝟻':'5', '𝟼':'6', '𝟽':'7', '𝟾':'8', '𝟿':'9',
 
-    # Fraktur / Gothic (untuk 𝕻𝖚𝖑𝖆𝖚𝖜𝖎𝖓𝖟)
+    # Fraktur / Gothic (for 𝕻𝖚𝖑𝖆𝖚𝖜𝖎𝖓𝖟)
     '𝕬':'A', '𝕭':'B', '𝕮':'C', '𝕯':'D', '𝕰':'E', '𝕱':'F', '𝕲':'G', '𝕳':'H', '𝕴':'I', '𝕵':'J', '𝕶':'K', '𝕷':'L', '𝕸':'M', '𝕹':'N', '𝕺':'O', '𝕻':'P', '𝕼':'Q', '𝕽':'R', '𝕾':'S', '𝕿':'T', '𝖀':'U', '𝖁':'V', '𝖂':'W', '𝖃':'X', '𝖄':'Y', '𝖅':'Z',
     '𝖆':'a', '𝖇':'b', '𝖈':'c', '𝖉':'d', '𝖊':'e', '𝖋':'f', '𝖌':'g', '𝖍':'h', '𝖎':'i', '𝖏':'j', '𝖐':'k', '𝖑':'l', '𝖒':'m', '𝖓':'n', '𝖔':'o', '𝖕':'p', '𝖖':'q', '𝖗':'r', '𝖘':'s', '𝖙':'t', '𝖚':'u', '𝖛':'v', '𝖜':'w', '𝖝':'x', '𝖞':'y', '𝖟':'z',
 
-    # Enclosed Alphanumerics (khusus untuk 🄿🅄🄻🄰🅄🅆🄸🄽)
+    # Enclosed Alphanumerics (specifically for 🄿🅄🄻🄰🅄🅆🄸🄽)
     'Ⓐ':'A', 'Ⓑ':'B', 'Ⓒ':'C', 'Ⓓ':'D', 'Ⓔ':'E', 'Ⓕ':'F', 'Ⓖ':'G', 'Ⓗ':'H', 'Ⓘ':'I', 'Ⓙ':'J', 'Ⓚ':'K', 'Ⓛ':'L', 'Ⓜ':'M', 'Ⓝ':'N', 'Ⓞ':'O', 'Ⓟ':'P', 'Ⓠ':'Q', 'Ⓡ':'R', 'Ⓢ':'S', 'Ⓣ':'T', 'Ⓤ':'U', 'Ⓥ':'V', 'Ⓦ':'W', 'Ⓧ':'X', 'Ⓨ':'Y', 'Ⓩ':'Z',
     'ⓐ':'a', 'ⓑ':'b', 'ⓒ':'c', 'ⓓ':'d', 'ⓔ':'e', 'ⓕ':'f', 'ⓖ':'g', 'ⓗ':'h', 'ⓘ':'i', 'ⓙ':'j', 'ⓚ':'k', 'ⓛ':'l', 'ⓜ':'m', 'ⓝ':'n', 'ⓞ':'o', 'ⓟ':'p', 'ⓠ':'q', 'ⓡ':'r', 'ⓢ':'s', 'ⓣ':'t', 'ⓤ':'u', 'ⓥ':'v', 'ⓦ':'w', 'ⓧ':'x', 'ⓨ':'y', 'ⓩ':'z',
     '🅰':'A', '🅱':'B', '🅲':'C', '🅳':'D', '🅴':'E', '🅵':'F', '🅶':'G', '🅷':'H', '🅸':'I', '🅹':'J', '🅺':'K', '🅻':'L', '🅼':'M', '🅽':'N', '🅾':'O', '🅿':'P', '🆀':'Q', '🆁':'R', '🆂':'S', '🆃':'T', '🆄':'U', '🆅':'V', '🆆':'W', '🆇':'X', '🆈':'Y', '🆉':'Z',
     '🄿':'P', '🄾':'O', '🄽':'N', '🄼':'M', '🄻':'L', '🄺':'K', '🄹':'J', '🄸':'I', '🄷':'H', '🄶':'G', '🄵':'F', '🄴':'E', '🄳':'D', '🄲':'C', '🄱':'B', '🄰':'A',
     '🅀':'Q', '🅁':'R', '🅂':'S', '🅃':'T', '🅄':'U', '🅅':'V', '🅆':'W', '🅇':'X', '🅈':'Y', '🅉':'Z',
 
-    # Karakter spesifik lain
+    # Other specific characters
     'ڛ': 'S', '𛍃': 'A', '𛍅': 'G', '𛍄': 'A', '𝅙': 'A', '𛌷': 'R', '𛌺': 'D',
     'ᑭ': 'P', 'ᖇ': 'R', 'ᗷ': 'B',
 }
@@ -80,15 +81,12 @@ MULTI_CHAR_NORMALIZATION_MAP = {
 }
 
 def normalize_and_clean_styles(text: str) -> str:
-    # multi-char mapping
     for old, new in MULTI_CHAR_NORMALIZATION_MAP.items():
         text = text.replace(old, new)
 
-    # strip combining diacritics / zero-width / variation selectors
     diacritic_stripper = re.compile(r"[\u0300-\u036f\u0483-\u0489\u200b-\u200f\u20d0-\u20ff\ufe0e\ufe0f]")
     text = diacritic_stripper.sub('', text)
 
-    # map characters via translation table
     trans_table = str.maketrans(FULL_UNICODE_NORMALIZATION_MAP)
     text = text.translate(trans_table)
     return text
@@ -96,26 +94,19 @@ def normalize_and_clean_styles(text: str) -> str:
 def clean_text_modified(text: str) -> str:
     text = str(text)
 
-    # remove anchor tags content
     text = re.sub(r'<a[^>]*>.*?</a>', ' ', text, flags=re.IGNORECASE | re.DOTALL)
-    # remove any html tag
     text = re.sub(r'<[^>]+>', ' ', text)
-    # remove urls (including something.tld/...)
+    
     url_pattern = re.compile(r'(?:https?://|www\.)\S+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/\S*)?')
     text = url_pattern.sub(' ', text)
 
-    # normalize fancy unicode characters
     text = normalize_and_clean_styles(text)
-
-    # unescape HTML entities
     text = html.unescape(text)
 
-    # remove punctuation except keep hyphen '-'
     punc_to_remove = string.punctuation.replace('-', '')
     pattern = r'[' + re.escape(punc_to_remove) + r']'
     text = re.sub(pattern, ' ', text)
 
-    # collapse whitespace
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -131,7 +122,6 @@ def safe_stemmer(text: str, stemmer) -> str:
             new_tokens.append(token)
     return " ".join(new_tokens)
 
-# create sastrawi objects if available
 if _SASTRAWI_AVAILABLE:
     try:
         stop_factory = StopWordRemoverFactory()
@@ -146,37 +136,33 @@ else:
     stemmer = None
 
 def preprocess_text_full(text: str) -> str:
-    # 1) clean & normalize unicode / html / urls / punctuation
     t = clean_text_modified(text)
-    # 2) lowercase
     t = t.lower()
-    # 3) stopword remove (if available)
+    
     if stop_remover is not None:
         try:
             t = stop_remover.remove(t)
         except Exception:
             pass
-    # 4) safe stem
+            
     if stemmer is not None:
         try:
             t = safe_stemmer(t, stemmer)
         except Exception:
             pass
-    # final whitespace collapse
+            
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
 # ---------------- Automatic processing for DataFrame 'all_data' if present ----------------
-# (Added so behavior matches the standalone script you provided)
 try:
     if 'all_data' in globals() and isinstance(all_data, pd.DataFrame) and 'text' in all_data.columns:
-        print("Memulai proses cleaning dengan kamus normalisasi definitif...")
-        print("Langkah 1: Cleaning, normalisasi font, dan penghapusan URL...")
+        print("Starting cleaning process with definitive normalization dictionary...")
+        print("Step 1: Cleaning, font normalization, and URL removal...")
         all_data['clean_text'] = all_data['text'].apply(clean_text_modified)
-        print("Langkah 2: Mengubah ke huruf kecil...")
+        print("Step 2: Converting to lowercase...")
         all_data['clean_text'] = all_data['clean_text'].str.lower()
-        print("Langkah 3: Menghapus stopwords...")
-        # Ensure stop_remover exists (try to initialize if Sastrawi available but was not initialized)
+        print("Step 3: Removing stopwords...")
         if stop_remover is None and _SASTRAWI_AVAILABLE:
             try:
                 stop_factory = StopWordRemoverFactory()
@@ -186,8 +172,8 @@ try:
         if stop_remover is not None:
             all_data['clean_text'] = all_data['clean_text'].apply(lambda x: stop_remover.remove(x))
         else:
-            print("Warning: Sastrawi stop_remover tidak tersedia; melewati tahap penghapusan stopwords.")
-        print("Langkah 4: Melakukan stemming...")
+            print("Warning: Sastrawi stop_remover is not available; skipping stopword removal.")
+        print("Step 4: Performing stemming...")
         if stemmer is None and _SASTRAWI_AVAILABLE:
             try:
                 stem_factory = StemmerFactory()
@@ -197,17 +183,17 @@ try:
         if stemmer is not None:
             all_data['clean_text'] = all_data['clean_text'].apply(lambda x: safe_stemmer(x, stemmer))
         else:
-            print("Warning: Sastrawi stemmer tidak tersedia; melewati tahap stemming.")
-        print("\nProses cleaning selesai.")
-        print("\n--- Contoh Hasil pada 'all_data' ---")
+            print("Warning: Sastrawi stemmer is not available; skipping stemming.")
+        print("\nCleaning process completed.")
+        print("\n--- Sample Results on 'all_data' ---")
         try:
             print(all_data[['text', 'clean_text']].head())
         except Exception:
-            print("Tidak dapat menampilkan contoh hasil (mungkin environment tidak mendukung print DataFrame).")
+            print("Cannot display sample results (environment might not support DataFrame printing).")
 except Exception as e:
     print(f"Auto-processing all_data failed: {e}")
 
-# ---------------- Robust HF loader (DIPERBARUI) ----------------
+# ---------------- Robust HF loader ----------------
 @st.cache_resource(show_spinner=False)
 def load_pipeline_hf(repo_id: str, device_choice: str = "auto"):
     if device_choice == "cpu":
@@ -226,22 +212,19 @@ def load_pipeline_hf(repo_id: str, device_choice: str = "auto"):
     kwargs = {"token": hf_token} if hf_token else {}
 
     try:
-        # Coba load dari subfolder "model"
         tok = AutoTokenizer.from_pretrained(repo_id, subfolder="model", **kwargs)
         model = AutoModelForSequenceClassification.from_pretrained(repo_id, subfolder="model", **kwargs)
         
-        # PERBAIKAN PENTING: Gunakan top_k=None untuk memastikan format score tetap List of Dicts
         pipe = pipeline("text-classification", model=model, tokenizer=tok, top_k=None, device=device)
         return pipe, device
     except Exception as e:
-        # Fallback load dari root (berjaga-jaga jika folder model diubah)
         try:
             tok = AutoTokenizer.from_pretrained(repo_id, **kwargs)
             model = AutoModelForSequenceClassification.from_pretrained(repo_id, **kwargs)
             pipe = pipeline("text-classification", model=model, tokenizer=tok, top_k=None, device=device)
             return pipe, device
         except Exception as e2:
-            raise RuntimeError(f"Gagal memuat model dari HF.\nError subfolder: {e}\nError root: {e2}")
+            raise RuntimeError(f"Failed to load model from HF.\nSubfolder error: {e}\nRoot error: {e2}")
 
 # ---------------- Utility helpers ----------------
 def get_top_prediction(scores_list):
@@ -258,9 +241,9 @@ def normalize_label(lbl):
         return str(lbl)
     
     mapping = {
-        0: "Netral",
+        0: "Neutral",
         1: "Toxic",
-        2: "Judol"
+        2: "Online Gambling"
     }
     
     return mapping.get(lbl_int, str(lbl_int))
@@ -328,50 +311,53 @@ example_btn = st.sidebar.button("Use example text")
 
 # ---------------- Main UI ----------------
 st.title("🧪 IndoBERT — Text Classification")
-st.subheader("Input: single text or YouTube link (analyze comments)")
+st.subheader("Input: Single text or YouTube link (analyze comments)")
 
-# Load model (cached)
-with st.spinner("Memuat model (sekali saja)..."):
+with st.spinner("Loading model (only once)..."):
     try:
         nlp, device_used = load_pipeline_hf(repo_input, device_choice=device_opt)
     except Exception as e:
         tb = traceback.format_exc()
-        st.error(f"Gagal memuat model dari `{repo_input}`:\n{e}")
+        st.error(f"Failed to load model from `{repo_input}`:\n{e}")
         st.code(tb)
         st.stop()
 
 if device_used == 0:
-    st.success("Model dimuat — GPU akan digunakan untuk inference.")
+    st.success("Model loaded — GPU will be used for inference.")
 else:
-    st.info("Model dimuat — CPU digunakan untuk inference.")
+    st.info("Model loaded — CPU will be used for inference.")
 
-# choose input mode
-mode = st.radio("Pilih mode input:", ["Text single", "YouTube URL (comments)"])
+mode = st.radio("Select input mode:", ["Single text", "YouTube URL (comments)"])
 
 if example_btn:
-    default_text = "Produk ini sangat memuaskan. Pengiriman cepat dan kualitasnya bagus."
+    default_text = "This product is very satisfying. Fast delivery and good quality."
 else:
     default_text = ""
 
-# ---------------- Text single mode (with preprocessing) ----------------
-if mode == "Text single":
-    text = st.text_area("Masukkan teks untuk diklasifikasi", value=default_text, height=140)
+# ---------------- Single text mode ----------------
+if mode == "Single text":
+    text = st.text_area("Enter text to classify", value=default_text, height=140)
     if st.button("Predict single"):
         if not text or not text.strip():
-            st.warning("Input tidak boleh kosong.")
+            st.warning("Input cannot be empty.")
         else:
-            with st.spinner("Melakukan preprocessing & inference..."):
+            with st.spinner("Performing preprocessing & inference..."):
                 pre = preprocess_text_full(text)
                 out = nlp(pre)
-                scores = out[0]
+                
+                if isinstance(out[0], list):
+                    scores = out[0]
+                else:
+                    scores = out
+                    
                 top_label, top_score = get_top_prediction(scores)
                 display_label = normalize_label(top_label)
 
-            st.markdown("### 🔎 Prediksi Akhir")
+            st.markdown("### 🔎 Final Prediction")
             st.write("**Original:**", text)
             st.write("**Preprocessed:**", pre)
             st.metric(label="Predicted class", value=f"{display_label}", delta=f"{top_score:.4f}")
-            st.caption("Probabilitas di metric adalah probabilitas kelas terpilih.")
+            st.caption("The probability in the metric is for the selected class.")
 
             df_data = []
             for x in scores:
@@ -383,43 +369,44 @@ if mode == "Text single":
             df = pd.DataFrame(df_data)
 
             df = df.sort_values("score", ascending=False).reset_index(drop=True)
-            st.markdown("#### Probabilitas per Kelas")
+            st.markdown("#### Class Probabilities")
             st.bar_chart(df.set_index("label"))
 
             if show_raw:
                 st.markdown("#### Raw scores")
                 st.json(scores)
 
-# ---------------- YouTube comments mode (with preprocessing) ----------------
+# ---------------- YouTube comments mode ----------------
 else:
-    youtube_url = st.text_input("Masukkan link YouTube (atau langsung video id):", value="")
-    max_comments = st.slider("Jumlah komentar maksimal", min_value=10, max_value=1000, value=200, step=10)
+    youtube_url = st.text_input("Enter YouTube link (or video ID directly):", value="")
+    max_comments = st.slider("Maximum number of comments", min_value=10, max_value=1000, value=200, step=10)
     analyze_btn = st.button("Analyze comments")
 
     if analyze_btn:
         vid = extract_video_id(youtube_url)
         if not vid:
-            st.error("Tidak dapat mengekstrak video id. Pastikan URL benar.")
+            st.error("Cannot extract video ID. Ensure the URL is correct.")
         else:
             api_key = None
             try:
                 api_key = st.secrets["YOUTUBE_API_KEY"]
             except Exception:
                 api_key = os.environ.get("YOUTUBE_API_KEY")
+                
             if not api_key:
-                st.error("YouTube API key tidak ditemukan. Set `YOUTUBE_API_KEY` di Streamlit secrets atau env var.")
+                st.error("YouTube API key not found. Set `YOUTUBE_API_KEY` in Streamlit secrets or env var.")
             else:
-                with st.spinner("Mengambil komentar dari YouTube..."):
+                with st.spinner("Fetching comments from YouTube..."):
                     try:
                         comments = fetch_youtube_comments(vid, api_key, max_comments=max_comments)
                     except Exception as e:
-                        st.error(f"Gagal mengambil komentar: {e}")
+                        st.error(f"Failed to fetch comments: {e}")
                         comments = []
 
                 if not comments:
-                    st.warning("Tidak ada komentar yang berhasil diambil (atau komentar dinonaktifkan).")
+                    st.warning("No comments fetched (or comments are disabled).")
                 else:
-                    st.success(f"Terambil {len(comments)} komentar — menjalankan preprocessing & inference...")
+                    st.success(f"Fetched {len(comments)} comments — running preprocessing & inference...")
                     batch_size = 32
                     preds = []
                     confidences = []
@@ -427,20 +414,34 @@ else:
                     preprocessed_texts = []
                     progress_bar = st.progress(0)
                     total = len(comments)
+                    
                     for i in range(0, total, batch_size):
                         batch = comments[i:i+batch_size]
-                        # preprocess batch first
                         pre_batch = [preprocess_text_full(c) for c in batch]
                         try:
                             outs = nlp(pre_batch)
                         except Exception:
-                            # fallback single
                             outs = [nlp(pb)[0] for pb in pre_batch]
+                            
                         for out in outs:
-                            scores = out
-                            label, conf = get_top_prediction(scores)
+                            if isinstance(out, list):
+                                scores = out
+                            else:
+                                scores = [out] if not isinstance(out, list) and not isinstance(out, dict) else (out if isinstance(out, list) else [out])
+                                
+                            if isinstance(out, list) and len(out) > 0 and isinstance(out[0], dict):
+                                scores = out
+                            elif isinstance(out, dict):
+                                scores = [out]
+                                
+                            try:
+                                label, conf = get_top_prediction(scores)
+                            except:
+                                label, conf = get_top_prediction(outs)
+                                
                             preds.append(normalize_label(label))
                             confidences.append(conf)
+                            
                         texts.extend(batch)
                         preprocessed_texts.extend(pre_batch)
                         progress_bar.progress(min(1.0, (i+batch_size)/total))
@@ -455,17 +456,40 @@ else:
 
                     counts = df_res["predicted_label"].value_counts()
 
-                    st.markdown("### 📊 Distribusi Kelas Komentar")
+                    st.markdown("### 📊 Comment Class Distribution")
                     fig, ax = plt.subplots()
 
                     ax.pie(counts.values, labels=counts.index, autopct='%1.1f%%', startangle=90)
                     ax.axis('equal')
                     st.pyplot(fig)
-                    st.markdown("### 🔎 Tabel Hasil")
+                    
+                    st.markdown("### 🔎 Results Table")
                     st.dataframe(df_res.head(200))
 
-                    csv = df_res.to_csv(index=False)
-                    st.download_button("Download hasil (CSV)", csv, file_name=f"yt_comments_pred_{vid}.csv", mime="text/csv")
+                    st.markdown("### 📥 Download Results")
+                    
+                    # Dropdown form untuk format file download
+                    dl_format = st.selectbox("Select download format:", ["CSV (.csv)", "Excel (.xlsx)"])
+                    
+                    if dl_format == "CSV (.csv)":
+                        csv = df_res.to_csv(index=False)
+                        st.download_button(
+                            label="Download File", 
+                            data=csv, 
+                            file_name=f"yt_comments_pred_{vid}.csv", 
+                            mime="text/csv"
+                        )
+                    else:
+                        buffer = io.BytesIO()
+                        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                            df_res.to_excel(writer, index=False, sheet_name='Predictions')
+                        
+                        st.download_button(
+                            label="Download File",
+                            data=buffer.getvalue(),
+                            file_name=f"yt_comments_pred_{vid}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
 
                     if show_raw:
                         st.markdown("#### All predictions")
