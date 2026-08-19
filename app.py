@@ -188,7 +188,7 @@ def load_pipeline_hf(repo_id: str, device_choice: str = "auto"):
         tok = AutoTokenizer.from_pretrained(repo_id, subfolder="model", **kwargs)
         model = AutoModelForSequenceClassification.from_pretrained(repo_id, subfolder="model", **kwargs)
         
-        pipe = pipeline("text-classification", model=model, tokenizer=tok, return_all_scores=True, device=device)
+        pipe = pipeline("text-classification", model=model, tokenizer=tok, top_k=None, device=device)
         return pipe, device
     except Exception as e:
         raise RuntimeError(f"Gagal memuat model dari Hugging Face: {e}")
@@ -313,9 +313,14 @@ if mode == "Text single":
             with st.spinner("Melakukan preprocessing & inference..."):
                 pre = preprocess_text_full(text)
                 out = nlp(pre)
-                scores = out[0]
+                
+                # Pengaman agar tahan banting terhadap versi transformers lama/baru
+                if isinstance(out[0], list):
+                    scores = out[0]  
+                else:
+                    scores = out  
+                    
                 top_label, top_score = get_top_prediction(scores)
-                display_label = normalize_label(top_label)
 
             st.markdown("### 🔎 Prediksi Akhir")
             st.write("**Original:**", text)
