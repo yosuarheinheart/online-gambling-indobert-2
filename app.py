@@ -14,6 +14,7 @@ import requests
 import matplotlib.pyplot as plt
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from huggingface_hub import list_repo_files, hf_hub_download
 
 # --- optional text libraries (Sastrawi) with graceful fallback ---
 try:
@@ -52,16 +53,16 @@ FULL_UNICODE_NORMALIZATION_MAP = {
     '𝗮':'a', '𝗯':'b', '𝗰':'c', '𝗱':'d', '𝗲':'e', '𝗳':'f', '𝗴':'g', '𝗵':'h', '𝗶':'i', '𝗷':'j', '𝗸':'k', '𝗹':'l', '𝗺':'m', '𝗻':'n', '𝗼':'o', '𝗽':'p', '𝗾':'q', '𝗿':'r', '𝘀':'s', '𝘁':'t', '𝘂':'u', '𝘃':'v', '𝘄':'w', '𝘅':'x', '𝘆':'y', '𝘇':'z',
     '𝟬':'0', '𝟭':'1', '𝟮':'2', '𝟯':'3', '𝟰':'4', '𝟱':'5', '𝟲':'6', '𝟳':'7', '𝟴':'8', '𝟵':'9',
 
-    # Monospace
+    # Monospace (untuk 𝙿𝚛𝚘𝚋𝚎𝚝𝟾𝟻𝟻)
     '𝙰':'A', '𝙱':'B', '𝙲':'C', '𝙳':'D', '𝙴':'E', '𝙵':'F', '𝙶':'G', '𝙷':'H', '𝙸':'I', '𝙹':'J', '𝙺':'K', '𝙻':'L', '𝙼':'M', '𝙽':'N', '𝙾':'O', '𝙿':'P', '𝚀':'Q', '𝚁':'R', '𝚂':'S', '𝚃':'T', '𝚄':'U', '𝚅':'V', '𝚆':'W', '𝚇':'X', '𝚈':'Y', '𝚉':'Z',
     '𝚊':'a', '𝚋':'b', '𝚌':'c', '𝚍':'d', '𝚎':'e', '𝚏':'f', '𝚐':'g', '𝚑':'h', '𝚒':'i', '𝚓':'j', '𝚔':'k', '𝚕':'l', '𝚖':'m', '𝚗':'n', '𝚘':'o', '𝚙':'p', '𝚚':'q', '𝚛':'r', '𝚜':'s', '𝚝':'t', '𝚞':'u', '𝚟':'v', '𝚠':'w', '𝚡':'x', '𝚢':'y', '𝚣':'z',
     '𝟶':'0', '𝟷':'1', '𝟸':'2', '𝟹':'3', '𝟺':'4', '𝟻':'5', '𝟼':'6', '𝟽':'7', '𝟾':'8', '𝟿':'9',
 
-    # Fraktur / Gothic
+    # Fraktur / Gothic (untuk 𝕻𝖚𝖑𝖆𝖚𝖜𝖎𝖓𝖟)
     '𝕬':'A', '𝕭':'B', '𝕮':'C', '𝕯':'D', '𝕰':'E', '𝕱':'F', '𝕲':'G', '𝕳':'H', '𝕴':'I', '𝕵':'J', '𝕶':'K', '𝕷':'L', '𝕸':'M', '𝕹':'N', '𝕺':'O', '𝕻':'P', '𝕼':'Q', '𝕽':'R', '𝕾':'S', '𝕿':'T', '𝖀':'U', '𝖁':'V', '𝖂':'W', '𝖃':'X', '𝖄':'Y', '𝖅':'Z',
     '𝖆':'a', '𝖇':'b', '𝖈':'c', '𝖉':'d', '𝖊':'e', '𝖋':'f', '𝖌':'g', '𝖍':'h', '𝖎':'i', '𝖏':'j', '𝖐':'k', '𝖑':'l', '𝖒':'m', '𝖓':'n', '𝖔':'o', '𝖕':'p', '𝖖':'q', '𝖗':'r', '𝖘':'s', '𝖙':'t', '𝖚':'u', '𝖛':'v', '𝖜':'w', '𝖝':'x', '𝖞':'y', '𝖟':'z',
 
-    # Enclosed Alphanumerics
+    # Enclosed Alphanumerics (khusus untuk 🄿🅄🄻🄰🅄🅆🄸🄽)
     'Ⓐ':'A', 'Ⓑ':'B', 'Ⓒ':'C', 'Ⓓ':'D', 'Ⓔ':'E', 'Ⓕ':'F', 'Ⓖ':'G', 'Ⓗ':'H', 'Ⓘ':'I', 'Ⓙ':'J', 'Ⓚ':'K', 'Ⓛ':'L', 'Ⓜ':'M', 'Ⓝ':'N', 'Ⓞ':'O', 'Ⓟ':'P', 'Ⓠ':'Q', 'Ⓡ':'R', 'Ⓢ':'S', 'Ⓣ':'T', 'Ⓤ':'U', 'Ⓥ':'V', 'Ⓦ':'W', 'Ⓧ':'X', 'Ⓨ':'Y', 'Ⓩ':'Z',
     'ⓐ':'a', 'ⓑ':'b', 'ⓒ':'c', 'ⓓ':'d', 'ⓔ':'e', 'ⓕ':'f', 'ⓖ':'g', 'ⓗ':'h', 'ⓘ':'i', 'ⓙ':'j', 'ⓚ':'k', 'ⓛ':'l', 'ⓜ':'m', 'ⓝ':'n', 'ⓞ':'o', 'ⓟ':'p', 'ⓠ':'q', 'ⓡ':'r', 'ⓢ':'s', 'ⓣ':'t', 'ⓤ':'u', 'ⓥ':'v', 'ⓦ':'w', 'ⓧ':'x', 'ⓨ':'y', 'ⓩ':'z',
     '🅰':'A', '🅱':'B', '🅲':'C', '🅳':'D', '🅴':'E', '🅵':'F', '🅶':'G', '🅷':'H', '🅸':'I', '🅹':'J', '🅺':'K', '🅻':'L', '🅼':'M', '🅽':'N', '🅾':'O', '🅿':'P', '🆀':'Q', '🆁':'R', '🆂':'S', '🆃':'T', '🆄':'U', '🆅':'V', '🆆':'W', '🆇':'X', '🆈':'Y', '🆉':'Z',
@@ -165,7 +166,48 @@ def preprocess_text_full(text: str) -> str:
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
-# ---------------- Robust HF loader ----------------
+# ---------------- Automatic processing for DataFrame 'all_data' if present ----------------
+# (Added so behavior matches the standalone script you provided)
+try:
+    if 'all_data' in globals() and isinstance(all_data, pd.DataFrame) and 'text' in all_data.columns:
+        print("Memulai proses cleaning dengan kamus normalisasi definitif...")
+        print("Langkah 1: Cleaning, normalisasi font, dan penghapusan URL...")
+        all_data['clean_text'] = all_data['text'].apply(clean_text_modified)
+        print("Langkah 2: Mengubah ke huruf kecil...")
+        all_data['clean_text'] = all_data['clean_text'].str.lower()
+        print("Langkah 3: Menghapus stopwords...")
+        # Ensure stop_remover exists (try to initialize if Sastrawi available but was not initialized)
+        if stop_remover is None and _SASTRAWI_AVAILABLE:
+            try:
+                stop_factory = StopWordRemoverFactory()
+                stop_remover = stop_factory.create_stop_word_remover()
+            except Exception:
+                stop_remover = None
+        if stop_remover is not None:
+            all_data['clean_text'] = all_data['clean_text'].apply(lambda x: stop_remover.remove(x))
+        else:
+            print("Warning: Sastrawi stop_remover tidak tersedia; melewati tahap penghapusan stopwords.")
+        print("Langkah 4: Melakukan stemming...")
+        if stemmer is None and _SASTRAWI_AVAILABLE:
+            try:
+                stem_factory = StemmerFactory()
+                stemmer = stem_factory.create_stemmer()
+            except Exception:
+                stemmer = None
+        if stemmer is not None:
+            all_data['clean_text'] = all_data['clean_text'].apply(lambda x: safe_stemmer(x, stemmer))
+        else:
+            print("Warning: Sastrawi stemmer tidak tersedia; melewati tahap stemming.")
+        print("\nProses cleaning selesai.")
+        print("\n--- Contoh Hasil pada 'all_data' ---")
+        try:
+            print(all_data[['text', 'clean_text']].head())
+        except Exception:
+            print("Tidak dapat menampilkan contoh hasil (mungkin environment tidak mendukung print DataFrame).")
+except Exception as e:
+    print(f"Auto-processing all_data failed: {e}")
+
+# ---------------- Robust HF loader (DIPERBARUI) ----------------
 @st.cache_resource(show_spinner=False)
 def load_pipeline_hf(repo_id: str, device_choice: str = "auto"):
     if device_choice == "cpu":
@@ -184,14 +226,22 @@ def load_pipeline_hf(repo_id: str, device_choice: str = "auto"):
     kwargs = {"token": hf_token} if hf_token else {}
 
     try:
-        # Load langsung dari subfolder "model" agar tidak terjadi error missing tokenizers
+        # Coba load dari subfolder "model"
         tok = AutoTokenizer.from_pretrained(repo_id, subfolder="model", **kwargs)
         model = AutoModelForSequenceClassification.from_pretrained(repo_id, subfolder="model", **kwargs)
         
+        # PERBAIKAN PENTING: Gunakan top_k=None untuk memastikan format score tetap List of Dicts
         pipe = pipeline("text-classification", model=model, tokenizer=tok, top_k=None, device=device)
         return pipe, device
     except Exception as e:
-        raise RuntimeError(f"Gagal memuat model dari Hugging Face: {e}")
+        # Fallback load dari root (berjaga-jaga jika folder model diubah)
+        try:
+            tok = AutoTokenizer.from_pretrained(repo_id, **kwargs)
+            model = AutoModelForSequenceClassification.from_pretrained(repo_id, **kwargs)
+            pipe = pipeline("text-classification", model=model, tokenizer=tok, top_k=None, device=device)
+            return pipe, device
+        except Exception as e2:
+            raise RuntimeError(f"Gagal memuat model dari HF.\nError subfolder: {e}\nError root: {e2}")
 
 # ---------------- Utility helpers ----------------
 def get_top_prediction(scores_list):
@@ -313,14 +363,9 @@ if mode == "Text single":
             with st.spinner("Melakukan preprocessing & inference..."):
                 pre = preprocess_text_full(text)
                 out = nlp(pre)
-                
-                # Pengaman agar tahan banting terhadap versi transformers lama/baru
-                if isinstance(out[0], list):
-                    scores = out[0]  
-                else:
-                    scores = out  
-                    
+                scores = out[0]
                 top_label, top_score = get_top_prediction(scores)
+                display_label = normalize_label(top_label)
 
             st.markdown("### 🔎 Prediksi Akhir")
             st.write("**Original:**", text)
