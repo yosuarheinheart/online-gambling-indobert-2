@@ -42,7 +42,7 @@ FULL_UNICODE_NORMALIZATION_MAP = {
 
     # Mathematical Bold
     '𝐀':'A', '𝐁':'B', '𝐂':'C', '𝐃':'D', '𝐄':'E', '𝐅':'F', '𝐆':'G', '𝐇':'H', '𝐈':'I', '𝐉':'J', '𝐊':'K', '𝐋':'L', '𝐌':'M', '𝐍':'N', '𝐎':'O', '𝐏':'P', '𝐐':'Q', '𝐑':'R', '𝐒':'S', '𝐓':'T', '𝐔':'U', '𝐕':'V', '𝐖':'W', '𝐗':'X', '𝐘':'Y', '𝐙':'Z',
-    '𝐚':'a', '𝐛':'b', '𝐜':'c', '𝐝':'d', '𝐞':'e', '𝐟':'f', '𝐠':'g', '𝐡':'h', '𝐢':'i', '𝐣':'j', '𝐤':'k', '𝐥':'l', '𝐦':'m', '𝐧':'n', '𝐨':'o', '𝐩':'p', '𝐪':'q', '𝐫':'r', '𝐬':'s', '𝐭':'t', '𝐮':'u', '𝐯':'v', '𝐰':'w', '𝐱':'x', '𝐲':'y', '𝐳':'z',
+    '𝐚':'a', '𝐛':'b', '𝐜':'c', '𝐝':'d', 'ｅ':'e', '𝐟':'f', 'ｇ':'g', '𝐡':'h', '𝐢':'i', '𝐣':'j', '𝐤':'k', '𝐥':'l', '𝐦':'m', '𝐧':'n', '𝐨':'o', '𝐩':'p', '𝐪':'q', '𝐫':'r', '𝐬':'s', '𝐭':'t', '𝐮':'u', '𝐯':'v', '𝐰':'w', '𝐱':'x', '𝐲':'y', '𝐳':'z',
     '𝟎':'0', '𝟏':'1', '𝟐':'2', '𝟑':'3', '𝟒':'4', '𝟓':'5', '𝟔':'6', '𝟕':'7', '𝟖':'8', '𝟗':'9',
 
     # Sans-Serif Bold Italic
@@ -382,7 +382,15 @@ else:
     max_comments = st.slider("Maximum number of comments", min_value=10, max_value=1000, value=200, step=10)
     analyze_btn = st.button("Analyze comments")
 
+    # Inisialisasi session_state agar hasil analisis tidak hilang saat tombol dirender ulang
+    if "yt_df_res" not in st.session_state:
+        st.session_state.yt_df_res = None
+        st.session_state.yt_vid = None
+
     if analyze_btn:
+        st.session_state.yt_df_res = None
+        st.session_state.yt_vid = None
+        
         vid = extract_video_id(youtube_url)
         if not vid:
             st.error("Cannot extract video ID. Ensure the URL is correct.")
@@ -454,46 +462,55 @@ else:
                         "confidence": confidences
                     })
 
-                    counts = df_res["predicted_label"].value_counts()
+                    # Simpan hasil ke session_state agar tahan terhadap rerun Streamlit
+                    st.session_state.yt_df_res = df_res
+                    st.session_state.yt_vid = vid
 
-                    st.markdown("### 📊 Comment Class Distribution")
-                    fig, ax = plt.subplots()
+    # Blok untuk menampilkan hasil analisis (jika ada di session_state)
+    if st.session_state.yt_df_res is not None:
+        df_res = st.session_state.yt_df_res
+        vid = st.session_state.yt_vid
 
-                    ax.pie(counts.values, labels=counts.index, autopct='%1.1f%%', startangle=90)
-                    ax.axis('equal')
-                    st.pyplot(fig)
-                    
-                    st.markdown("### 🔎 Results Table")
-                    st.dataframe(df_res.head(200))
+        counts = df_res["predicted_label"].value_counts()
 
-                    st.markdown("### 📥 Download Results")
-                    
-                    # Dropdown form untuk format file download
-                    dl_format = st.selectbox("Select download format:", ["CSV (.csv)", "Excel (.xlsx)"])
-                    
-                    if dl_format == "CSV (.csv)":
-                        csv = df_res.to_csv(index=False)
-                        st.download_button(
-                            label="Download File", 
-                            data=csv, 
-                            file_name=f"yt_comments_pred_{vid}.csv", 
-                            mime="text/csv"
-                        )
-                    else:
-                        buffer = io.BytesIO()
-                        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                            df_res.to_excel(writer, index=False, sheet_name='Predictions')
-                        
-                        st.download_button(
-                            label="Download File",
-                            data=buffer.getvalue(),
-                            file_name=f"yt_comments_pred_{vid}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+        st.markdown("### 📊 Comment Class Distribution")
+        fig, ax = plt.subplots()
 
-                    if show_raw:
-                        st.markdown("#### All predictions")
-                        st.write(df_res)
+        ax.pie(counts.values, labels=counts.index, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')
+        st.pyplot(fig)
+        
+        st.markdown("### 🔎 Results Table")
+        st.dataframe(df_res.head(200))
+
+        st.markdown("### 📥 Download Results")
+        
+        # Dropdown opsi format file download
+        dl_format = st.selectbox("Select download format:", ["CSV (.csv)", "Excel (.xlsx)"])
+        
+        if dl_format == "CSV (.csv)":
+            csv = df_res.to_csv(index=False)
+            st.download_button(
+                label="Download File", 
+                data=csv, 
+                file_name=f"yt_comments_pred_{vid}.csv", 
+                mime="text/csv"
+            )
+        else:
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                df_res.to_excel(writer, index=False, sheet_name='Predictions')
+            
+            st.download_button(
+                label="Download File",
+                data=buffer.getvalue(),
+                file_name=f"yt_comments_pred_{vid}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        if show_raw:
+            st.markdown("#### All predictions")
+            st.write(df_res)
 
 # Footer / notes
 st.markdown("---")
